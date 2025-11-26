@@ -7,3 +7,18 @@ pkill mpv
 Command to run python script:
 cd ~/Documents/Final Project
 python3 python3 ADC\ Volume\ Control.py
+
+I2S Microphone:
+https://learn.adafruit.com/adafruit-i2s-mems-microphone-breakout/raspberry-pi-wiring-test
+
+1) Add Microphone to Config.txt
+sudo nano /boot/firmware/config.txt
+dtoverlay=googlevoicehat-soundcard | Add to bottom of the file
+sudo reboot now
+
+2) Confirm Microphone
+arecord -l
+
+To Record & Playback from speaker:
+arecord -D plughw:4,0 -c1 -r 48000 -f S32_LE test.wav
+aplay -D plughw:3,0 songrequest.wav
