@@ -1,0 +1,9 @@
+Command to Run Dont' Speak Test Video:
+mpv --no-video --ao=pulse --audio-device="alsa_output.usb-Solid_State_System_Co._Ltd._USB_PnP_Audio_Device_000000000000-00.analog-stereo" --loop https://youtu.be/TR3Vdo5etCQ?si=g3ygS4_U7QHKtOxg
+
+Command to Stop Music Video:
+pkill mpv
+
+Command to run python script:
+cd ~/Documents/Final Project
+python3 python3 ADC\ Volume\ Control.py
