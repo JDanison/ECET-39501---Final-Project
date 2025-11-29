@@ -1,0 +1,14 @@
+Microphone:
+3.3V Rail -> 3.3V
+GND -> GND
+Mic LRCL Pin -> GPIO 19 (PCM_FS)
+Mic DOUT Pin -> GPIO 20 (PCM_DIN)
+Mic BCLK Pin -> GPIO 18 (PCM_CLK)
+
+Volume Control:
+3.3V Rail -> 3.3V
+GND -> GND
+MCP Pin 10 -> GPIO 8
+MCP Pin 11 -> GPIO 10
+MCP Pin 12 -> GPIO 9
+MCP Pin 13 -> GPIO 11
