@@ -1,0 +1,67 @@
+[
+    {
+        "id": "voice_record_button",
+        "type": "ui_button",
+        "z": "YOUR_FLOW_ID",
+        "name": "Voice Record Toggle",
+        "group": "YOUR_GROUP_ID",
+        "order": 3,
+        "width": "0",
+        "height": "0",
+        "passthru": false,
+        "label": "🎤 Record",
+        "tooltip": "Click to start/stop voice recording",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "fa-microphone",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "toggle",
+        "topicType": "str",
+        "x": 130,
+        "y": 500,
+        "wires": [
+            [
+                "voice_toggle_logic"
+            ]
+        ]
+    },
+    {
+        "id": "voice_toggle_logic",
+        "type": "function",
+        "z": "YOUR_FLOW_ID",
+        "name": "Toggle Record/Stop",
+        "func": "// Track recording state in context\nlet isRecording = context.get('isRecording') || false;\n\nif (!isRecording) {\n    // Start recording\n    msg.payload = 'record';\n    context.set('isRecording', true);\n    node.status({fill:\"red\",shape:\"dot\",text:\"recording...\"});\n} else {\n    // Stop and transcribe\n    msg.payload = 'stop';\n    context.set('isRecording', false);\n    node.status({fill:\"green\",shape:\"dot\",text:\"processing...\"});\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 500,
+        "wires": [
+            [
+                "mqtt_voice_control_out"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt_voice_control_out",
+        "type": "mqtt out",
+        "z": "YOUR_FLOW_ID",
+        "name": "Voice Control",
+        "topic": "voice/control",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "YOUR_MQTT_BROKER_ID",
+        "x": 550,
+        "y": 500,
+        "wires": []
+    }
+]

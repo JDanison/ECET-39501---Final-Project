@@ -11,6 +11,7 @@ import subprocess
 import threading
 from gpiozero import MCP3008
 from time import sleep
+import paho.mqtt.client as mqtt
 
 # ==========================================================
 # AUTO-ACTIVATE VIRTUAL ENVIRONMENT
@@ -64,8 +65,68 @@ AUDIO_FILE = "soundrequest.wav"
 ADC_CHANNEL = 0
 UPDATE_DELAY = 0.2  # seconds between updates
 
+# MQTT Configuration
+MQTT_BROKER = "localhost"  # Use localhost since script runs on same Pi as broker
+MQTT_PORT = 1883
+MQTT_TOPIC = "voice/spotify"
+
 # Global flag to control volume monitoring thread
 volume_monitoring = False
+
+
+# ==========================================================
+# MQTT FUNCTIONS
+# ==========================================================
+def parse_voice_command(transcript):
+    """
+    Parse voice command to extract song and artist.
+    Expected format: "Play Song_Name by Artist_Name"
+    Returns: "Song_Name Artist_Name" (without 'Play' and 'by')
+    """
+    # Convert to lowercase for case-insensitive matching
+    text = transcript.strip()
+    text_lower = text.lower()
+    
+    # Remove "play" from the beginning
+    if text_lower.startswith("play "):
+        text = text[5:].strip()  # Remove "play " (5 characters)
+    
+    # Find and remove " by " (case-insensitive)
+    by_index = text.lower().find(" by ")
+    if by_index != -1:
+        song_name = text[:by_index].strip()
+        artist_name = text[by_index + 4:].strip()  # +4 to skip " by "
+        result = f"{song_name} {artist_name}"
+    else:
+        # If no " by " found, just return the text as-is (without "play")
+        result = text
+    
+    return result
+
+
+def send_to_nodered(transcript):
+    """Send transcription to Node-RED via MQTT."""
+    try:
+        # Parse the voice command to extract song and artist
+        search_query = parse_voice_command(transcript)
+        
+        mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+        print(f"  Original: '{transcript}'")
+        print(f"  Formatted: '{search_query}'")
+        print(f"  Connecting to {MQTT_BROKER}:{MQTT_PORT}...")
+        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        print(f"  Publishing to topic: {MQTT_TOPIC}")
+        mqtt_client.publish(MQTT_TOPIC, search_query)
+        mqtt_client.disconnect()
+        print(f"✓ Sent to Node-RED: '{search_query}'\n")
+        return True
+    except ConnectionRefusedError:
+        print(f"✗ Connection refused - Is MQTT broker running on {MQTT_BROKER}?\n")
+        print(f"  Try: sudo systemctl status mosquitto\n")
+        return False
+    except Exception as e:
+        print(f"✗ Error sending to Node-RED: {e}\n")
+        return False
 
 
 # ==========================================================
@@ -176,9 +237,15 @@ while True:
                 "-nt"  # no timestamps
             ], text=True)
 
+            transcript = result.strip()
+            
             print("=== TRANSCRIPTION RESULT ===")
-            print(result.strip())
+            print(transcript)
             print("============================\n")
+            
+            # Send to Node-RED via MQTT
+            print("Sending to Node-RED...")
+            send_to_nodered(transcript)
 
         except Exception as e:
             print("\nError during transcription:")
