@@ -55,16 +55,16 @@ RECORD_CMD = [
     "-c1",
     "-r", "48000",
     "-f", "S32_LE",
-    "soundrequest.wav"
+    "songrequest.wav"
 ]
 
 PLAY_CMD = [
     "aplay",
     "-D", "plughw:3,0",    # USB speakers
-    "soundrequest.wav"
+    "songrequest.wav"
 ]
 
-AUDIO_FILE = "soundrequest.wav"
+AUDIO_FILE = "songrequest.wav"
 
 # ADC Volume Control
 ADC_CHANNEL = 0
@@ -455,7 +455,7 @@ while True:
         except KeyboardInterrupt:
             print("\nRecording manually stopped.")
 
-        print("Saved as soundrequest.wav\n")
+        print("Saved as songrequest.wav\n")
 
     # ---------------------- PLAYBACK ----------------------
     elif choice == "p":
