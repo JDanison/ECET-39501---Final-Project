@@ -1,0 +1,892 @@
+[
+    {
+        "id": "28f60fa2f4e58887",
+        "type": "tab",
+        "label": "Spotify Test 2",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "4f0f069228294852",
+        "type": "change",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "rules": [
+            {
+                "t": "move",
+                "p": "payload.tracks.items",
+                "pt": "msg",
+                "to": "payload",
+                "tot": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "_msgid",
+                "pt": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "params",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1120,
+        "y": 220,
+        "wires": [
+            [
+                "6d0dfc9a65cb42d5",
+                "953343ad1cb8d055"
+            ]
+        ]
+    },
+    {
+        "id": "ce57f83a8baf0c0c",
+        "type": "ui_template",
+        "z": "28f60fa2f4e58887",
+        "group": "d783cb980c3979fc",
+        "name": "Node-Red Dashboard Custom CSS",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "format": "<style>\n\n    /*Main background */\n    body {\n        background: -webkit-linear-gradient(\n            55deg,\n            #009785 0%,\n            #245aa5 50%,\n            #b800e9 100%\n            );\n    }\n\n    /*Top bar*/\n    body.nr-dashboard-theme md-toolbar,\n    body.nr-dashboard-theme md-content md-card {\n        background-color: transparent !important;\n        color: #FFFFFF !important;\n    }\n\n\n    /*Left menu*/\n    /*Sidebar*/\n    body.nr-dashboard-theme md-sidenav {\n        color: white !important;\n        background-color: rgba(0,0,0,0) !important;\n    }\n    /*Hover selection*/\n    a.md-no-style, button.md-no-style {\n        border-radius: 10px !important;\n    }\n    /*Selected*/\n    .nr-menu-item-active div button {\n        border-right: 4px solid rgb(41 98 255) !important;\n    }\n    /*List*/\n    body.nr-dashboard-theme md-sidenav div.md-list-item-inner {\n        color: white !important;\n        background-color: rgba(40,85,165,1) !important;\n        border-radius: 10px !important;\n    }\n\n\n    /*Groups*/\n    ui-card-panel {\n        background-color: rgba(255,255,255,0.1) !important;\n        border-radius: 10px !important;\n    }\n    .nr-dashboard-theme ui-card-panel {\n        border: none !important;\n    }\n    /*Name groups*/\n    .nr-dashboard-theme ui-card-panel p.nr-dashboard-cardtitle {\n        color: rgba(255, 255, 255, 0.5) !important;\n    }\n\n\n    /*Buttons*/\n    .nr-dashboard-theme .nr-dashboard-button .md-button {\n        background-color: rgba(255,255,255,.1) !important;\n    }\n    .md-button {\n        border-radius: 10px !important;\n    }\n\n\n    /*Dropdown menu*/\n    .nr-dashboard-theme md-select-menu{\n        background-color: rgba(40,85,165,1) !important;\n    }\n    .nr-dashboard-theme md-select-menu, .nr-dashboard-theme md-select-menu md-option {\n        background-color: transparent !important;\n    }\n    .nr-dashboard-theme .md-select-menu-container {\n        border-radius: 10px !important;\n        border: none !important;\n    }\n    .nr-dashboard-theme md-select-menu md-option[selected] {\n        color: white !important;\n        background-color: #1a3566 !important;\n    }\n\n    /*Template*/\n    md-card>img, md-card>md-card-header img, md-card md-card-title-media img {\n        border-radius: 10px !important;\n    }\n\n    /* Color picker text BG */\n    .nr-dashboard-theme .color-picker-input-wrapper > input {\n        color: white !important;\n        background-color: transparent !important;\n    }\n    md-list-item .md-list-item-inner {\n    background: #b22a2a00;\n    /* padding-left: 8px; */\n    /* width: 100%; */\n    /* height: 100%; */\n    }\n    md-list-item .md-list-item-inner {\n    background: #00000000;\n    }\n    .nr-dashboard-template p, .nr-dashboard-template h1, .nr-dashboard-template h2, .nr-dashboard-template h3,\n    .nr-dashboard-template h4 {\n    color: #000000 !important;\n    background-color: #301f1f00 !important;\n    }\n    .nr-dashboard-template {\n    overflow-y: clip;\n    /* vertical-align: inherit; */\n    }\n    .nr-dashboard-theme .nr-dashboard-template .md-button {\n    background-color: #2e698000;\n    margin: 0;\n    min-width: unset;\n    line-height: unset;\n    }\n    .nr-dashboard-theme md-menu-content {\n    background-color: #d03e3e00;\n    }\n    \n</style>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": false,
+        "templateScope": "global",
+        "className": "",
+        "x": 340,
+        "y": 700,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "9c3878e51961052b",
+        "type": "switch",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "istype",
+                "v": "string",
+                "vt": "string"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 810,
+        "y": 140,
+        "wires": [
+            [
+                "29d1645c13cc5663"
+            ]
+        ]
+    },
+    {
+        "id": "4c564c17e8f492a8",
+        "type": "spotify",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "auth": "77c0dd3d668bb2b6",
+        "api": "searchTracks",
+        "x": 1100,
+        "y": 140,
+        "wires": [
+            [
+                "4f0f069228294852"
+            ]
+        ]
+    },
+    {
+        "id": "123e3683ed10e064",
+        "type": "mqtt in",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "topic": "voice/spotify",
+        "qos": "2",
+        "datatype": "utf8",
+        "broker": "d884dd6ea2b740e9",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 630,
+        "y": 220,
+        "wires": [
+            [
+                "5336b66b61a80adc",
+                "6740bf6c3ac5ea7a",
+                "943eced5db22c472"
+            ]
+        ]
+    },
+    {
+        "id": "5336b66b61a80adc",
+        "type": "debug",
+        "z": "28f60fa2f4e58887",
+        "name": "Voice Query",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 810,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "a331b0dd56c87159",
+        "type": "mqtt out",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "topic": "voice/control",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "d884dd6ea2b740e9",
+        "x": 850,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "9c58b2e3ab8ca4a0",
+        "type": "mqtt in",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "topic": "voice/status",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "d884dd6ea2b740e9",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 630,
+        "y": 300,
+        "wires": [
+            [
+                "e50ecf4886779086",
+                "15c7048bb69155bc"
+            ]
+        ]
+    },
+    {
+        "id": "e50ecf4886779086",
+        "type": "debug",
+        "z": "28f60fa2f4e58887",
+        "name": "Processing Request",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 840,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "a8e36ddc7b7a5b00",
+        "type": "ui_button",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "group": "d783cb980c3979fc",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Toggle Recording",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "button_pressed",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 650,
+        "y": 480,
+        "wires": [
+            [
+                "a331b0dd56c87159",
+                "9fc3118391f1fff5"
+            ]
+        ]
+    },
+    {
+        "id": "6740bf6c3ac5ea7a",
+        "type": "ui_text",
+        "z": "28f60fa2f4e58887",
+        "group": "d783cb980c3979fc",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Voice Query",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 810,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "15c7048bb69155bc",
+        "type": "ui_text",
+        "z": "28f60fa2f4e58887",
+        "group": "d783cb980c3979fc",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Voice Status",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 810,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "9fc3118391f1fff5",
+        "type": "debug",
+        "z": "28f60fa2f4e58887",
+        "name": "Button Testing",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 860,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "d4a8c842b421540f",
+        "type": "ui_button",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "group": "bc289f3e011706f8",
+        "order": 7,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Pause",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 230,
+        "y": 300,
+        "wires": [
+            [
+                "dc3ad924f47b47b2"
+            ]
+        ]
+    },
+    {
+        "id": "c2a842478b59399a",
+        "type": "ui_button",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "group": "bc289f3e011706f8",
+        "order": 6,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Play",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 230,
+        "y": 240,
+        "wires": [
+            [
+                "862080fafc0fb895"
+            ]
+        ]
+    },
+    {
+        "id": "862080fafc0fb895",
+        "type": "spotify",
+        "z": "28f60fa2f4e58887",
+        "name": "Play",
+        "auth": "77c0dd3d668bb2b6",
+        "api": "play",
+        "x": 370,
+        "y": 240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "dc3ad924f47b47b2",
+        "type": "spotify",
+        "z": "28f60fa2f4e58887",
+        "name": "Pause",
+        "auth": "77c0dd3d668bb2b6",
+        "api": "pause",
+        "x": 370,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "0b3b957873b4a379",
+        "type": "ui_button",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "group": "bc289f3e011706f8",
+        "order": 8,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Skip",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 230,
+        "y": 360,
+        "wires": [
+            [
+                "84970f2991bdd90f"
+            ]
+        ]
+    },
+    {
+        "id": "84970f2991bdd90f",
+        "type": "spotify",
+        "z": "28f60fa2f4e58887",
+        "name": "Skip",
+        "auth": "77c0dd3d668bb2b6",
+        "api": "skipToNext",
+        "x": 370,
+        "y": 360,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "6d0dfc9a65cb42d5",
+        "type": "debug",
+        "z": "28f60fa2f4e58887",
+        "name": "debug 20",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1140,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "953343ad1cb8d055",
+        "type": "function",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "func": "msg.params = [\n    {\n        \"context_uri\": msg.payload[0].album.uri\n,\n    \"offset\": {\n    \"position\":  msg.payload[0].track_number - 1\n        \n    }\n    }\n];\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1340,
+        "y": 140,
+        "wires": [
+            [
+                "df3dc3478f3ae103"
+            ]
+        ]
+    },
+    {
+        "id": "df3dc3478f3ae103",
+        "type": "spotify",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "auth": "77c0dd3d668bb2b6",
+        "api": "play",
+        "x": 1350,
+        "y": 220,
+        "wires": [
+            [
+                "12aae54a40bb6918"
+            ]
+        ]
+    },
+    {
+        "id": "12aae54a40bb6918",
+        "type": "debug",
+        "z": "28f60fa2f4e58887",
+        "name": "debug 21",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1340,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "856f74002fbb5553",
+        "type": "inject",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 650,
+        "y": 700,
+        "wires": [
+            [
+                "6e1902c158fee7e4"
+            ]
+        ]
+    },
+    {
+        "id": "0592c8c7be4cd734",
+        "type": "debug",
+        "z": "28f60fa2f4e58887",
+        "name": "debug 22",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1100,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "6e1902c158fee7e4",
+        "type": "spotify",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "auth": "77c0dd3d668bb2b6",
+        "api": "getMyCurrentPlaybackState",
+        "x": 880,
+        "y": 700,
+        "wires": [
+            [
+                "476f1f43e4a272ed",
+                "0592c8c7be4cd734"
+            ]
+        ]
+    },
+    {
+        "id": "476f1f43e4a272ed",
+        "type": "switch",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "property": "payload.is_playing",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "cont",
+                "v": "true",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1110,
+        "y": 700,
+        "wires": [
+            [
+                "c667f3f96d034504"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "c667f3f96d034504",
+        "type": "change",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "songTitle",
+                "pt": "msg",
+                "to": "payload.item.name",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "albumTitle",
+                "pt": "msg",
+                "to": "payload.item.album.name",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "albumReleaseDate",
+                "pt": "msg",
+                "to": "payload.item.album.release_date",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "artistName",
+                "pt": "msg",
+                "to": "payload.item.artists[0].name",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "imageUri",
+                "pt": "msg",
+                "to": "payload.item.album.images[0].url",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1300,
+        "y": 640,
+        "wires": [
+            [
+                "768ce177467bd3bb",
+                "30e0772fd3f9008a",
+                "bb1383b72906cd2a",
+                "befd1634302f9580",
+                "bb3caa5e491f58fd",
+                "6f7ec1b1497e38ee"
+            ]
+        ]
+    },
+    {
+        "id": "768ce177467bd3bb",
+        "type": "ui_template",
+        "z": "28f60fa2f4e58887",
+        "group": "a49c0692cb0dbaa1",
+        "name": "Image",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "format": "<img src=\"{{msg.imageUri}}\" style=\"max-width: 100%; border-radius: 8px;\">",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1510,
+        "y": 540,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "bb1383b72906cd2a",
+        "type": "debug",
+        "z": "28f60fa2f4e58887",
+        "name": "debug 23",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1320,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "30e0772fd3f9008a",
+        "type": "ui_text",
+        "z": "28f60fa2f4e58887",
+        "group": "a49c0692cb0dbaa1",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Song Title",
+        "format": "{{msg.songTitle}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 1520,
+        "y": 600,
+        "wires": []
+    },
+    {
+        "id": "befd1634302f9580",
+        "type": "ui_text",
+        "z": "28f60fa2f4e58887",
+        "group": "a49c0692cb0dbaa1",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Album",
+        "format": "{{msg.albumTitle}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 1510,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "bb3caa5e491f58fd",
+        "type": "ui_text",
+        "z": "28f60fa2f4e58887",
+        "group": "a49c0692cb0dbaa1",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Release Date",
+        "format": "{{msg.albumReleaseDate}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 1540,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "6f7ec1b1497e38ee",
+        "type": "ui_text",
+        "z": "28f60fa2f4e58887",
+        "group": "a49c0692cb0dbaa1",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Artist",
+        "format": "{{msg.artistName}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 1510,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "29d1645c13cc5663",
+        "type": "function",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "func": "\nmsg.params = \n[msg.payload,{ limit : 1, offset : 0 }];\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 140,
+        "wires": [
+            [
+                "4c564c17e8f492a8"
+            ]
+        ]
+    },
+    {
+        "id": "943eced5db22c472",
+        "type": "change",
+        "z": "28f60fa2f4e58887",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "search",
+                "pt": "msg",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 660,
+        "y": 140,
+        "wires": [
+            [
+                "9c3878e51961052b"
+            ]
+        ]
+    },
+    {
+        "id": "d783cb980c3979fc",
+        "type": "ui_group",
+        "name": "Inputs",
+        "tab": "f0a1db7162cd0bdc",
+        "order": 2,
+        "disp": true,
+        "width": "7",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "77c0dd3d668bb2b6",
+        "type": "spotify-auth",
+        "name": "John-Access",
+        "scope": "streaming user-read-private "
+    },
+    {
+        "id": "d884dd6ea2b740e9",
+        "type": "mqtt-broker",
+        "name": "Raspberry Pi",
+        "broker": "localhost",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "bc289f3e011706f8",
+        "type": "ui_group",
+        "name": "Music Control",
+        "tab": "f0a1db7162cd0bdc",
+        "order": 1,
+        "disp": true,
+        "width": 6,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "a49c0692cb0dbaa1",
+        "type": "ui_group",
+        "name": "Artist Information",
+        "tab": "f0a1db7162cd0bdc",
+        "order": 3,
+        "disp": true,
+        "width": 6,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "f0a1db7162cd0bdc",
+        "type": "ui_tab",
+        "name": "Home",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "c12514cd063eb496",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6",
+            "node-red-contrib-spotify": "0.1.4"
+        }
+    }
+]

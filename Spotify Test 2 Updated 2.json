@@ -8,31 +8,9 @@
         "env": []
     },
     {
-        "id": "25dd2516db0fb2c6",
-        "type": "function",
-        "z": "245b365b9163d19f",
-        "d": true,
-        "name": "",
-        "func": "\nmsg.params = \n[msg.payload,{ limit : 1, offset : 0 }];\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 360,
-        "y": 280,
-        "wires": [
-            [
-                "e56307f18a62536a"
-            ]
-        ]
-    },
-    {
         "id": "3f7fa3dc7545e107",
         "type": "change",
         "z": "245b365b9163d19f",
-        "d": true,
         "name": "",
         "rules": [
             {
@@ -63,7 +41,8 @@
         "wires": [
             [
                 "a83c16a39566d50d",
-                "9e43a3409e2bc195"
+                "9e43a3409e2bc195",
+                "03e5712ac9c450f1"
             ]
         ]
     },
@@ -272,7 +251,7 @@
         "sendOnBlur": true,
         "className": "",
         "topicType": "msg",
-        "x": 100,
+        "x": 60,
         "y": 280,
         "wires": [
             [
@@ -284,7 +263,6 @@
         "id": "c71e30eb4d6612d2",
         "type": "switch",
         "z": "245b365b9163d19f",
-        "d": true,
         "name": "",
         "property": "payload",
         "propertyType": "msg",
@@ -310,7 +288,6 @@
         "id": "e56307f18a62536a",
         "type": "spotify",
         "z": "245b365b9163d19f",
-        "d": true,
         "name": "",
         "auth": "3d728934197f1534",
         "api": "searchTracks",
@@ -318,8 +295,7 @@
         "y": 280,
         "wires": [
             [
-                "3f7fa3dc7545e107",
-                "03e5712ac9c450f1"
+                "3f7fa3dc7545e107"
             ]
         ]
     },
@@ -422,7 +398,8 @@
             [
                 "ce6bd64a689e8743",
                 "8118d5d6fe8d1707",
-                "d21d9b09e12686fd"
+                "d21d9b09e12686fd",
+                "94db9144256b4d53"
             ]
         ]
     },
@@ -715,13 +692,13 @@
         "id": "9e43a3409e2bc195",
         "type": "debug",
         "z": "245b365b9163d19f",
-        "d": true,
         "name": "debug 20",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "false",
+        "complete": "true",
+        "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
         "x": 680,
@@ -732,10 +709,10 @@
         "id": "03e5712ac9c450f1",
         "type": "function",
         "z": "245b365b9163d19f",
-        "d": true,
         "name": "",
-        "func": "msg.params = [\n    {\n        \"context_uri\": msg.payload.uri\n,\n    \"offset\": {\n    \"position\":  msg.payload.track\n        \n    }\n    }\n];\nreturn msg;\n\n",
+        "func": "msg.params = [\n    {\n        \"context_uri\": msg.payload[0].album.uri\n,\n    \"offset\": {\n    \"position\":  msg.payload[0].track_number - 1\n        \n    }\n    }\n];\nreturn msg;",
         "outputs": 1,
+        "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
@@ -752,7 +729,6 @@
         "id": "d80610cfc726e278",
         "type": "spotify",
         "z": "245b365b9163d19f",
-        "d": true,
         "name": "",
         "auth": "3d728934197f1534",
         "api": "play",
@@ -768,13 +744,13 @@
         "id": "5b9fae877d2a9a4b",
         "type": "debug",
         "z": "245b365b9163d19f",
-        "d": true,
         "name": "debug 21",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "false",
+        "complete": "true",
+        "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
         "x": 1020,
@@ -1054,6 +1030,53 @@
         "wires": []
     },
     {
+        "id": "25dd2516db0fb2c6",
+        "type": "function",
+        "z": "245b365b9163d19f",
+        "name": "",
+        "func": "\nmsg.params = \n[msg.payload,{ limit : 1, offset : 0 }];\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 280,
+        "wires": [
+            [
+                "e56307f18a62536a"
+            ]
+        ]
+    },
+    {
+        "id": "94db9144256b4d53",
+        "type": "change",
+        "z": "245b365b9163d19f",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "search",
+                "pt": "msg",
+                "to": "payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 140,
+        "y": 240,
+        "wires": [
+            [
+                "c71e30eb4d6612d2"
+            ]
+        ]
+    },
+    {
         "id": "d783cb980c3979fc",
         "type": "ui_group",
         "name": "Search",
@@ -1132,7 +1155,7 @@
         "hidden": false
     },
     {
-        "id": "5e2311f1d4941566",
+        "id": "40c25b1f7ce5efa7",
         "type": "global-config",
         "env": [],
         "modules": {
