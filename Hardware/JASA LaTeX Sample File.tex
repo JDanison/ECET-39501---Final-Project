@@ -1,0 +1,811 @@
+%	JASA LaTeX Sample File, Preprint Sample
+%
+%  Beginner Latex users should refer to their favorite online documentation
+%  here is one from the TeX Users Group 
+%	https://www.tug.org/twg/mactex/tutorials/ltxprimer-1.0.pdf
+%
+%  Useful FAQ from  https://journals.aps.org/revtex/revtex-faq
+% 
+
+%%%%%%% For Preprint
+%% For manuscript, 12pt, one column style. Preprint is required for submission.
+
+%\documentclass[preprint,NumberedRefs]{JASA}
+\documentclass[reprint]{JASA}
+
+\usepackage{dcolumn}
+\usepackage{array}
+%\usepackage{booktabs} % Highly recommended for professional-looking tables
+\usepackage{makecell}
+\usepackage{float}
+\usepackage{tabularray}
+\usepackage{paralist}
+
+%%%%% Preprint Options %%%%%
+%% The track changes option allows you to mark changes
+%% and will produce a list of changes, their line number
+%% and page number at the end of the article.
+ %\documentclass[preprint,trackchanges]{JASA}
+ 
+\renewcommand{\thetable}{\Roman{table}}
+
+%% NumberedRefs is used for numbered bibliography and citations.
+%% Default is Author-Year style.
+%\documentclass[preprint,NumberedRefs]{JASA}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% For Reprint
+%% For appearance of finished article; 2 columns, 10 pt fonts
+%% Also used for estimating print page length.
+
+% \documentclass[reprint]{JASA}
+
+%%%%% Reprint Options %%%%%
+
+%% NumberedRefs is used for numbered bibliography and citations.
+%% Default is Author-Year style.
+% \documentclass[reprint,NumberedRefs]{JASA}
+
+%% TurnOnLineNumbers
+%% Make lines be numbered in reprint style:
+% \documentclass[reprint,TurnOnLineNumbers]{JASA}
+
+\begin{document}
+
+\title{Raspberry Pi Spotify Voice Search and Control with Node-Red}
+
+\author{Matthew Tolla}
+\email{tolla@purdue.edu}
+%\affiliation{School of Engineering Technology, Purdue University, West Lafayette, IN 47907, United States}
+
+\author{John Danison}
+\email{jdanison@purdue.edu}
+\affiliation{School of Engineering Technology, Purdue University, West Lafayette, IN 47907, United States}
+
+
+\preprint{Matthew Tolla et al., JASA}	%if you want want this message to appear in upper right corner of title page
+
+\date{\today} 
+
+\begin{abstract}
+This project demonstrates how audio-based data acquisition, speech processing, cloud APIs, and visual dashboards can be combined to build a fully functional voice-controlled Spotify playback system. This system allows a user to speak the name of a song or artist into a microphone attached to a Raspberry Pi, automatically convert the speech into text using the Whisper STT model, search Spotify for the spoken track, and begin playback on the Pi using Spotify Connect. This project highlights multiple concepts from class, including real-time audio acquisition, digital signaling through I2S, MQTT message transport, REST API interactions with Spotify, and web-based visualization through Node-RED Dashboard. By combining these tools, we created a seamless, interactive, hands-free music player using only inexpensive hardware and open-source software.
+\end{abstract}
+
+%% pacs numbers not used
+
+\maketitle
+%\newpage
+%\tableofcontents
+%\newpage
+%  End of title page for Preprint option --------------------------------- %
+\section{Introduction}\label{Intro}
+This project demonstrates how audio-based data acquisition, speech processing, cloud APIs, and visual dashboards can be combined to build a fully functional voice-controlled Spotify playback system. The goal of the project was to allow a user to speak the name of a song or artist into a microphone attached to a Raspberry Pi, automatically convert the speech into text using the Whisper STT model, search Spotify for the spoken track, and begin playback on the Pi using Spotify Connect. The system also displays the currently playing song’s metadata—title, artist, album, and release year—on a Node-RED dashboard.
+
+The idea for this project came from the popularity of smart speakers like Amazon Echo or Google Home. Instead of using proprietary systems, we wanted to build an open-source, fully transparent pipeline that students could understand and recreate. This project highlights multiple concepts from class, including real-time audio acquisition, digital signaling through I2S, MQTT message transport, REST API interactions with Spotify, and web-based visualization through Node-RED Dashboard.
+
+Several related technologies influenced our design. Whisper is known for its high transcription accuracy, even on embedded hardware, while Node-RED is widely used in IoT systems for low-code orchestration. Spotifyd provides an extremely lightweight Spotify Connect client that runs natively on Linux devices such as the Raspberry Pi. By combining these tools, we created a seamless, interactive, hands-free music player using only inexpensive hardware and open-source software.
+\section{Methods}\label{Metho}
+
+\subsection{System Overview}\label{M-subsec0}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{ECET 359 Final Project Flow.png}
+    \caption{Flowchart of UX}
+    \label{fig:Flowchart}
+\end{figure}
+Below are the components used in the flowchart above.
+
+\textbf{SPH0645 I2S Microphone - }
+Captures raw audio directly in digital form using the I2S protocol. This avoids the need for analog-to-digital converters and produces clean samples for Whisper.
+
+\textbf{Raspberry Pi 4 (4 GB) - }
+Runs the Python audio pipeline: recording, Whisper inference, and MQTT publication. Also hosts Spotifyd for music playback and Node-RED for the dashboard.
+
+\textbf{MQTT Broker - }
+Intermediate message hub used to send transcribed text and status updates between the Python program and Node-RED.
+
+\textbf{Node-RED Flow - }
+Subscribes to voice commands, queries the Spotify API, starts playback on spotifyd, and retrieves metadata for the dashboard.
+
+\textbf{Node-RED Dashboard - }
+Displays real-time information about the currently playing song with text widgets and album artwork.
+
+\subsection{Hardware Setup}\label{M-subsec0}
+
+\subsubsection{Components \& Bill of Materials}
+
+The hardware system consists of the following components (Table~I):
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|}\hline
+         Raspberry Pi 4 (4GB)\\\hline
+         SPH0645 I2S MEMS Microphone\\\hline
+         MicroSD card with Raspberry Pi OS\\\hline
+         USB-C power supply\\\hline
+         Jumper wires\\\hline
+         USB Speakers\\\hline
+         Breadboard\\\hline
+         MCP3008 ADC Chip\\\hline
+         10K Potentiometer\\\hline
+    \end{tabular}
+    \caption{Hardware components used in this project}
+    \label{tab:Hardware Table}
+\end{table}
+
+\subsubsection{Physical Architecture}
+
+\paragraph{\textbf{System Overview}}
+
+The physical setup consists of two major integration points: the breadboard subsystem and the Raspberry Pi host.
+
+\paragraph{\textbf{Breadboard Subsystem}}
+
+The breadboard contains three primary modules:
+
+\begin{itemize}
+    \item \textbf{MCP3008 ADC Chip} -- 10-bit analog-to-digital converter for potentiometer input
+    \item \textbf{10K Potentiometer} -- Analog volume control interface
+    \item \textbf{SPH0645 I2S Microphone} -- Digital MEMS microphone for voice input
+\end{itemize}
+
+\paragraph{\textbf{Power Distribution}}
+
+All breadboard components share common power rails:
+
+\begin{itemize}
+    \item \textbf{+3.3V Bus} -- Connected to Raspberry Pi Pin 1
+    \item \textbf{GND Bus} -- Connected to Raspberry Pi Pin 6
+\end{itemize}
+
+\subsubsection{GPIO Pin Assignments}
+
+The connections between the breadboard and Raspberry Pi 40-pin GPIO header are detailed in Table~II.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|}\hline
+         Breadboard Component & Raspberry Pi GPIO Pin \\\hline
+         +3.3V Power Bus & Pin 1\\\hline
+         GND Bus & Pin 6\\\hline
+         MCP3008 Pin 10 & GPIO 8 (SPI0 CE0)\\\hline
+         MCP3008 Pin 11 & GPIO 10 (SPI0 MOSI)\\\hline
+         MCP3008 Pin 12 & GPIO 9 (SPI0 MISO)\\\hline
+         MCP3008 Pin 13 & GPIO 11 (SPI0 SCLK)\\\hline
+         SPH0645 LRCL & GPIO 19 (PCM\_FS)\\\hline
+         SPH0645 DOUT & GPIO 20 (PCM\_DIN)\\\hline
+         SPH0645 BCLK & GPIO 18 (PCM\_CLK)\\\hline
+    \end{tabular}
+    \caption{Raspberry Pi GPIO connections to breadboard components}
+    \label{tab:GPIO_Connections}
+\end{table}
+
+\subsubsection{Component-Specific Wiring}
+
+\paragraph{\textbf{SPH0645 I2S Microphone}}
+
+Complete pin configuration for the I2S MEMS microphone (Table~III):
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}\hline
+         Microphone Pin & Connection & Notes\\\hline
+         3.3V & Pin 1 & \makecell{Microphone \\ Power (+3.3V)}\\\hline
+         GND & Pin 6 & \makecell{Ground \\ Reference}\\\hline
+         LRCL & GPIO 19 (PCM\_FS) & Left/Right clock\\\hline
+         DOUT & GPIO 20 (PCM\_DIN) & Data out to Pi\\\hline
+         BCLK & GPIO 18 (PCM\_CLK) & Bit clock\\\hline
+         SEL & Pin 6 (GND) & Select Line (L/R)\\\hline
+    \end{tabular}
+    \caption{SPH0645 I2S microphone wiring configuration}
+    \label{tab:Microphone_Wiring}
+\end{table}
+
+\paragraph{\textbf{MCP3008 ADC}}
+
+Complete pin configuration for the 10-bit analog-to-digital converter (Table~IV):
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}\hline
+         MCP3008 Pin & Connection & Function\\\hline
+         1 (CH0) & Potentiometer Wiper & Analog input\\\hline
+         9 (DGND) & GND & Digital ground\\\hline
+         10 (CS/SHDN) & GPIO 8 & Chip select\\\hline
+         11 (DIN) & GPIO 10 & Data in (MOSI)\\\hline
+         12 (DOUT) & GPIO 9 & Data out (MISO)\\\hline
+         13 (CLK) & GPIO 11 & Clock (SCLK)\\\hline
+         14 (AGND) & GND & Analog ground\\\hline
+         15 (VREF) & +3.3V & Reference voltage\\\hline
+         16 (VDD) & +3.3V & Power supply\\\hline
+    \end{tabular}
+    \caption{MCP3008 ADC wiring configuration}
+    \label{tab:ADC_Wiring}
+\end{table}
+
+\paragraph{\textbf{Raspberry Pi External Connections}}
+
+The Raspberry Pi interfaces with two external USB devices:
+
+\begin{itemize}
+    \item \textbf{Waveshare USB Speakers} -- Audio output device (\texttt{plughw:3,0})
+    \item \textbf{USB-C Power Supply} -- 5V/3A power input
+\end{itemize}
+
+\subsubsection{Physical Setup Documentation}
+
+Complete photographs of the assembled hardware system are provided in Figures~\ref{fig:breadboard}--\ref{fig:complete_system}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{BreadBoard.JPG}
+    \caption{Breadboard Setup}
+    \label{fig:breadboard}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Full System.JPG}
+    \caption{Raspberry Pi with Connected Components}
+    \label{fig:raspberry_pi}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Whole System.JPG}
+    \caption{Complete System Setup}
+    \label{fig:complete_system}
+\end{figure}
+
+
+\subsection{Software Setup}\label{M-subsec3}
+
+\subsubsection{System Architecture \& Code Flow}
+
+The software system operates in three distinct phases: initialization, main operation loop, and background processes running in parallel.
+
+\subsubsection*{Phase 1: System Initialization}
+\begin{enumerate}
+    \item \textbf{Virtual Environment Activation}: 
+    \begin{itemize}
+        \item Script automatically detects and activates Python virtual environment (\texttt{venv/})
+        \item Checks if already running in venv to avoid redundant activation
+        \item Displays warning if venv not found
+    \end{itemize}
+    
+    \item \textbf{Import Dependencies}: 
+    \begin{itemize}
+        \item Load Whisper.cpp for speech-to-text transcription
+        \item Import gpiozero for MCP3008 ADC interface
+        \item Load paho-mqtt for MQTT communication
+        \item Handle graceful degradation if components unavailable
+    \end{itemize}
+    
+    \item \textbf{Hardware Initialization}: 
+    \begin{itemize}
+        \item Initialize MCP3008 ADC on channel 0 (potentiometer input)
+        \item Test ADC availability and set flag accordingly
+        \item Configure audio device paths: \texttt{plughw:4,0} (I2S mic), \texttt{plughw:3,0} (USB speakers)
+    \end{itemize}
+    
+    \item \textbf{Start Spotifyd Daemon}: 
+    \begin{itemize}
+        \item Check if spotifyd process already running using \texttt{pgrep}
+        \item If not running, launch spotifyd with \texttt{--no-daemon} flag
+        \item Wait 2 seconds for daemon initialization
+    \end{itemize}
+    
+    \item \textbf{Launch MQTT Control Listener}: 
+    \begin{itemize}
+        \item Create MQTT client with callback functions
+        \item Connect to broker at \texttt{localhost:1883}
+        \item Subscribe to \texttt{voice/control} topic for button commands
+        \item Run listener in background thread (daemon mode)
+    \end{itemize}
+    
+    \item \textbf{Start Volume Monitoring Thread}: 
+    \begin{itemize}
+        \item If ADC available, set \texttt{volume\_monitoring = True}
+        \item Launch background thread executing \texttt{volume\_monitor\_thread()}
+        \item Thread reads ADC every 0.2 seconds and adjusts system volume
+    \end{itemize}
+    
+    \item \textbf{Display User Interface}: 
+    \begin{itemize}
+        \item Print available commands (R/P/T/V/Q)
+        \item Show MQTT topic information
+        \item Enter main input loop
+    \end{itemize}
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Command No Input.JPG}
+    \caption{Terminal output after system initialization}
+    \label{fig:post_init}
+\end{figure}
+
+\subsubsection*{Phase 2: Main Operation Loop}
+
+\subparagraph{Option R -- Record Voice Command}
+\begin{enumerate}
+    \item User presses 'R' or MQTT receives \texttt{button\_pressed} while not recording
+    \item Script displays: ``Recording... speak now!''
+    \item Publish status to \texttt{voice/status}: ``Recording''
+    \item Execute \texttt{arecord} command: \texttt{arecord -D plughw:4,0 -c1 -r 48000 -f S32\_LE songrequest.wav}
+    \item User speaks: ``Play [Song Name] by [Artist Name]''
+    \item User presses CTRL+C or sends MQTT stop command
+    \item Audio saved as \texttt{songrequest.wav}
+    \item Proceed to transcription phase
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Recording.JPG}
+    \caption{Terminal output during voice recording}
+    \label{fig:recording}
+\end{figure}
+
+\subparagraph{Option T -- Transcribe \& Process}
+\begin{enumerate}
+    \item User presses 'T' or auto-triggered after recording stop
+    \item Check if \texttt{songrequest.wav} exists, display error if not
+    \item Publish status to \texttt{voice/status}: ``Processing Request''
+    \item Execute Whisper.cpp transcription using the tiny.en model
+    \item Capture stdout text result (e.g., ``play, Stairway to Heaven by Led Zeppelin'')
+    \item Call \texttt{parse\_voice\_command()} to format: remove ``play,'' or ``play'' prefix, split on `` by '' separator, extract song name and artist name, capitalize each word, and combine: ``Stairway To Heaven Led Zeppelin''
+    \item Call \texttt{send\_to\_nodered()}: create MQTT client, connect to \texttt{localhost:1883}, publish formatted query to \texttt{voice/spotify} topic, and disconnect client
+    \item Clear status: publish empty string to \texttt{voice/status}
+    \item Display success message with formatted query
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Transcribing Audio.JPG}
+    \caption{Terminal output during audio transcription and processing}
+    \label{fig:transcribing}
+\end{figure}
+
+\subparagraph{Option P -- Playback Last Recording}
+\begin{enumerate}
+    \item User presses 'P'
+    \item Execute \texttt{aplay -D plughw:3,0 songrequest.wav}
+    \item Audio plays through USB speakers
+    \item Return to main menu
+\end{enumerate}
+
+\subparagraph{Option V -- Toggle Volume Monitoring}
+\begin{enumerate}
+    \item User presses 'V'
+    \item Check if ADC available (display error if not)
+    \item If volume monitoring OFF:
+    \begin{itemize}
+        \item Set \texttt{volume\_monitoring = True}
+        \item Launch new background thread running \texttt{volume\_monitor\_thread()}
+        \item Display ``Volume monitoring: ON''
+    \end{itemize}
+    \item If volume monitoring ON:
+    \begin{itemize}
+        \item Set \texttt{volume\_monitoring = False}
+        \item Wait for thread to terminate (1 second timeout)
+        \item Display ``Volume monitoring: OFF''
+    \end{itemize}
+\end{enumerate}
+
+\subparagraph{Option Q -- Quit Application}
+\begin{enumerate}
+    \item User presses 'Q'
+    \item Clear dashboard displays:
+    \begin{itemize}
+        \item Publish empty string to \texttt{voice/status}
+        \item Publish empty string to \texttt{voice/spotify}
+    \end{itemize}
+    \item Stop volume monitoring thread if running
+    \item Kill spotifyd process using \texttt{pkill spotifyd}
+    \item Display goodbye message and exit program
+\end{enumerate}
+
+\subsubsection*{Phase 3: Background Processes (Parallel Execution)}
+
+\subparagraph{Background Thread 1 -- MQTT Control Listener}
+\begin{itemize}
+    \item Runs continuously in daemon thread
+    \item Listens on \texttt{voice/control} topic
+    \item On message received:
+    \begin{itemize}
+        \item Decode payload (e.g., ``button\_pressed'')
+        \item If currently recording: stop and transcribe
+        \item If not recording: start recording
+    \end{itemize}
+    \item Also accepts text commands: ``record'', ``stop'', ``transcribe''
+    \item Boolean values: ``true'' = start, ``false'' = stop
+\end{itemize}
+
+\subparagraph{Background Thread 2 -- Volume Monitoring}
+\begin{itemize}
+    \item Runs continuously while \texttt{volume\_monitoring == True}
+    \item Loop every 0.2 seconds:
+    \begin{itemize}
+        \item Read MCP3008 ADC value (0.0 to 1.0 float)
+        \item Calculate display volume: \texttt{int(adc\_value * 100)}
+        \item Map to system volume: \texttt{int(adc\_value * 91) + 9} (range: 9--100\%)
+        \item Execute: \texttt{amixer set Master [volume]\%}
+    \end{itemize}
+    \item Prevents audio cutout by avoiding 0--8\% range
+    \item Terminates when flag set to False
+\end{itemize}
+
+\subparagraph{External Process -- Node-RED Flow}
+\begin{itemize}
+    \item Runs independently on Raspberry Pi
+    \item Subscribes to \texttt{voice/spotify} MQTT topic
+    \item On message received (e.g., ``Stairway To Heaven Led Zeppelin''):
+    \begin{itemize}
+        \item Parse search query
+        \item Send HTTP request to Spotify Web API
+        \item Search for matching track
+        \item Extract track URI
+        \item Send play command to spotifyd via Spotify Connect API
+    \end{itemize}
+    \item Handles authentication tokens and API rate limiting
+    \item Publishes playback status back to dashboard
+\end{itemize}
+
+\subsubsection{Programming Languages \& Tools Used}
+
+\paragraph{\textbf{Primary Language}}
+Python 3 (version 3.9+)
+
+\paragraph{\textbf{Key Libraries \& Packages}}
+
+\textbf{Audio Processing:}
+\begin{itemize}
+    \item \textbf{whispercpp} -- OpenAI Whisper speech-to-text engine (Python bindings)
+    \item \textbf{arecord} -- ALSA audio recording tool (I2S microphone interface)
+    \item \textbf{aplay} -- ALSA audio playback tool (USB speaker output)
+\end{itemize}
+
+\textbf{Hardware Control:}
+\begin{itemize}
+    \item \textbf{gpiozero} -- MCP3008 ADC interface for volume potentiometer. Reads analog voltage (0--3.3V) from potentiometer and converts to digital volume control (0--100\%)
+\end{itemize}
+
+\textbf{MQTT Communication:}
+\begin{itemize}
+    \item \textbf{paho-mqtt} -- MQTT client library. Publishes voice commands to Node-RED, subscribes to control commands from dashboard, and sends status updates (recording, processing, errors)
+\end{itemize}
+
+\textbf{System Utilities:}
+\begin{itemize}
+    \item \textbf{subprocess} -- Execute shell commands (arecord, aplay, amixer)
+    \item \textbf{threading} -- Parallel execution for volume monitoring \& MQTT listener
+    \item \textbf{os, sys} -- Virtual environment activation and file path management
+\end{itemize}
+
+\paragraph{\textbf{External Tools}}
+
+\textbf{Node-RED:}
+\begin{itemize}
+    \item \textbf{Purpose:} Spotify API integration
+    \item \textbf{Function:} Receives MQTT messages, searches Spotify catalog, and plays songs
+    \item \textbf{Flow Files:} \texttt{Node-Red Spotify Flow vFinal.json} and \texttt{Spotify Test 2 Updated 2.json}
+    \item \textbf{MQTT Topics:}
+    \begin{itemize}
+        \item \texttt{voice/spotify} -- search queries
+        \item \texttt{voice/control} -- button commands
+        \item \texttt{voice/status} -- system status
+    \end{itemize}
+\end{itemize}
+
+\textbf{Spotifyd:}
+\begin{itemize}
+    \item \textbf{Purpose:} Spotify Connect daemon
+    \item \textbf{Function:} Allows Raspberry Pi to appear as Spotify playback device
+    \item \textbf{Auto-start:} Launched by Python script if not running
+
+Example configuration:
+\begin{itemize}
+    \item Device name: \verb|"RaspberryPi"|
+    \item Runs automatically at boot
+    \item Controlled entirely through Node-RED via Spotify Web API commands
+\end{itemize}
+
+\end{itemize}
+
+\textbf{MQTT Broker (Mosquitto):}
+\begin{itemize}
+    \item \textbf{Port:} 1883 (local)
+    \item \textbf{Function:} Message broker between Python script and Node-RED
+\end{itemize}
+
+\subsubsection{Installation \& Configuration}
+
+\paragraph{\textbf{Prerequisites}}
+
+System update and installation of required packages:
+\begin{verbatim}
+sudo apt update && sudo apt upgrade -y
+sudo apt install alsa-utils -y
+sudo apt install mosquitto mosquitto-clients -y
+pip3 install gpiozero paho-mqtt
+\end{verbatim}
+
+Configure I2S microphone by adding \texttt{dtoverlay=googlevoicehat-soundcard} to \texttt{/boot/firmware/config.txt}, then reboot.
+
+\paragraph{\textbf{Virtual Environment Setup}}
+\begin{verbatim}
+cd ~/Documents/Final Project
+python3 -m venv venv
+source venv/bin/activate
+pip install whispercpp gpiozero paho-mqtt
+\end{verbatim}
+
+\paragraph{\textbf{Whisper.cpp Installation}}
+\begin{verbatim}
+cd ~/Documents/Final Project
+git clone 
+https://github.com/ggerganov/whisper.cpp.git
+cd whisper.cpp
+make
+bash ./models/download-ggml-model.sh tiny.en
+\end{verbatim}
+
+\paragraph{\textbf{Spotifyd Configuration}}
+Placed in project root directory, runs as foreground process (\texttt{--no-daemon} flag), configured via \texttt{\textasciitilde/.config/spotifyd/spotifyd.conf}.
+
+\subsubsection{Code Structure \& Key Functions}
+
+The main file \texttt{SpotifyVoiceControl.py} (524 lines) contains the following key functions:
+
+\paragraph{\textbf{Voice Command Processing}}
+\texttt{parse\_voice\_command(transcript)} function:
+\begin{itemize}
+    \item \textbf{Input:} ``Play, Stairway to Heaven by Led Zeppelin''
+    \item \textbf{Output:} ``Stairway To Heaven Led Zeppelin''
+    \item \textbf{Logic:}
+    \begin{enumerate}
+        \item Remove ``Play,'' or ``play'' prefix
+        \item Split on `` by '' separator
+        \item Capitalize each word
+        \item Combine song + artist
+    \end{enumerate}
+\end{itemize}
+
+\paragraph{\textbf{MQTT Functions}}
+\begin{itemize}
+    \item \texttt{send\_to\_nodered()} -- Publish formatted search query
+    \item \texttt{send\_status\_update()} -- Update dashboard status display
+    \item \texttt{on\_mqtt\_message()} -- Handle button press commands
+    \item \texttt{start\_mqtt\_listener()} -- Background thread for control topic
+\end{itemize}
+
+\paragraph{\textbf{Recording Functions}}
+\begin{itemize}
+    \item \texttt{start\_recording()} -- Spawn arecord process (background)
+    \item \texttt{stop\_recording\_and\_transcribe()} -- Terminate recording, run transcription
+    \item \texttt{transcribe\_audio()} -- Execute whisper-cli, parse output, send to Node-RED
+\end{itemize}
+
+\paragraph{\textbf{Volume Control}}
+\begin{itemize}
+    \item \texttt{set\_volume(volume\_percent)} -- Execute amixer command
+    \item \texttt{volume\_monitor\_thread()} -- Continuous ADC polling loop
+\end{itemize}
+
+\subsubsection{Running the Application}
+
+The application is located at \texttt{\textasciitilde/Documents/Final Project/SpotifyVoiceControl.py}. 
+
+To execute:
+\begin{verbatim}
+cd ~/Documents/Final Project
+python3 SpotifyVoiceControl.py
+\end{verbatim}
+
+\textbf{Expected Startup Output:}
+\begin{itemize}
+    \item System initialization messages
+    \item Spotifyd status (running or started)
+    \item MQTT control listener connection confirmation
+    \item Volume monitoring startup
+    \item Available commands (R/P/T/V/Q)
+    \item MQTT topics:
+    \begin{itemize}
+        \item \texttt{voice/control} -- for button commands
+        \item \texttt{voice/status} -- for status updates
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Node-RED Flow Details}
+
+Node-RED orchestrates all network interactions, API calls, MQTT messages, and dashboard updates.
+
+\paragraph{\textbf{A. Voice Command Reception}}
+Nodes:
+\begin{itemize}
+    \item \verb|mqtt in (voice/spotify)|
+    \item Debug + UI text
+\end{itemize}
+Purpose: Display the live transcription and pass it to the Spotify search logic.
+
+\paragraph{\textbf{B. Spotify Track Search Logic}}
+Nodes:
+\begin{itemize}
+    \item \verb|function| (build search params)
+    \item \verb|spotify| node (searchTracks)
+\end{itemize}
+Parameters sent:
+\begin{itemize}
+    \item Search phrase from STT
+    \item \verb|{ limit: 1, offset: 0 }|
+\end{itemize}
+This returns the top matching track.
+
+\paragraph{\textbf{C. Extracting First Track Result}}
+Node:
+\verb|change| (move \verb|payload.tracks.items → payload|)
+This isolates the first track from the API response.
+ 
+\paragraph{\textbf{D. Constructing Playback Request}}
+Node:
+\verb|function| builds:
+\verb|msg.params = [ { context_uri: msg.payload[0].album.uri, offset: { position: msg.payload[0].track_number - 1 } } ]; |
+This instructs Spotify to:
+\begin{itemize} 
+    \item  Start playback from the album  
+    \item  Jump to the correct track number  
+\end{itemize}
+
+\paragraph{\textbf{E. Starting Playback}}
+Node:
+\verb|spotify (play)|
+Music now starts on spotifyd.
+
+\paragraph{\textbf{F. Updating Music Metadata}}
+Every \textbf{5 seconds}, an inject node polls:
+\verb|getMyCurrentPlaybackState|
+
+Metadata extracted:
+\begin{itemize} 
+    \item  Song title  
+    \item  Artist  
+    \item  Album name  
+    \item  Release date  
+    \item  Album art URL  
+\end{itemize}
+These are mapped into \verb|msg.songTitle|, \verb|msg.artistName|, etc.
+
+\paragraph{\textbf{G. Dashboard Rendering}}
+Dashboard widgets:
+\begin{itemize} 
+    \item  Song Title (UI Text)  
+    \item  Artist (UI Text)  
+    \item  Album (UI Text)  
+    \item  Release Date (UI Text)  
+    \item  Album Artwork (\verb|ui_template| with \verb|<img>|)  
+\end{itemize}
+Everything updates automatically in real time.
+
+\subsection{Testing}\label{M-subsec4}
+Testing consisted of repeatedly speaking song commands while observing the dashboard and Node-RED debug output.
+
+Examples spoken:
+\begin{itemize}
+    \item ``Hotel California by Eagles''
+    \item ``Play Don't Speak by No Doubt''
+\end{itemize}
+
+\textbf{Procedure}
+\begin{itemize}
+    \item Run Python Whisper script
+    \item Open Node-RED Dashboard
+    \item Speak one command
+    \item Verify:
+    \begin{itemize}
+        \item Whisper STT correctness
+        \item Spotify API match
+        \item spotifyd playback begins
+        \item Dashboard updates
+    \end{itemize}
+\end{itemize}
+
+Screen captures and other testing items are covered in the "Software Setup" section. These terminal outputs were used in the debugging process to ensure proper execution of the microphone, Whisper transcription, and MQTT posting.   
+
+In addition to the terminal window, Node-Red was used to determine if the interface between the python backend scripts and the Node-Red Dashboard were compatible. An example debugging state can be seen below.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Node Red Recording.JPG}
+    \caption{Node-RED Receiving the "Recording State"}
+    \label{fig:node_red_recording}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Node Red Transcribiing.JPG}
+    \caption{Node-RED Receiving the "Transcribing and Searching State"}
+    \label{fig:node_red_transcribing}
+\end{figure}
+
+\section{Results}\label{Res}
+\textbf{Node-RED Flow}
+The Node-RED Flow successfully produced an aesthetically pleasing dashboard with full Spotify control on the Raspberry Pi.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Node-Red FLow.JPG}
+    \caption{Node-RED Flow}
+    \label{fig:node_red_flow}
+\end{figure}
+
+
+\textbf{Speech Recognition}
+Whisper running on the Raspberry Pi 4 provided accurate transcription with minimal delay. Clean speech in a quiet room produced nearly perfect results.
+
+\textbf{Spotify Search Accuracy}
+The Spotify Search API reliably returned the correct track as the first result when both the song and artist were spoken.
+
+\textbf{Playback Behavior}
+spotifyd responded within 1–3 seconds after the Node-RED play command was issued.
+
+\textbf{Dashboard Responsiveness}
+The dashboard updated reliably every few seconds, showing:
+\begin{itemize}
+    \item Album art
+    \item Song title
+    \item Artist
+    \item Album
+    \item Release year
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Working Dashboard Outputs.JPG}
+    \caption{Working Dashboard With Song Attributes}
+    \label{fig:dashboard_output}
+\end{figure}
+
+\section{Discussion}\label{Disc}
+\subsubsection{\textbf{System Performance}}
+Overall, the system performed as expected. Audio acquisition, STT conversion, and Spotify integration worked together smoothly. The Pi 4 handled Whisper’s processing load better than anticipated.
+
+\subsubsection{\textbf{Problems Encountered}}
+\begin{itemize}
+    \item Initial I2S microphone configuration required troubleshooting
+    \item Spotify token scopes needed adjustment (“user-read-currently-playing”, etc.)
+    \item Album artwork required fully qualified HTTPS URLs in the dashboard
+\end{itemize}
+
+\subsubsection{\textbf{What We Learned}}
+\begin{itemize}
+    \item How to acquire digital audio using I2S
+    \item Implementing speech-to-text in embedded hardware environments
+    \item Orchestrating MQTT + REST APIs inside Node-RED
+    \item Handling OAuth-based Web APIs (Spotify)
+    \item Designing intuitive dashboard interfaces
+\end{itemize}
+
+\subsubsection{\textbf{Future Improvements}}
+\begin{itemize}
+    \item Add wake-word detection
+    \item Add voice volume and pause/resume commands via STT
+    \item Cache Spotify tokens to reduce API delay
+    \item Incorporate multi-room audio or Bluetooth output
+    \item Add real-time waveform/spectrum visualization
+\end{itemize}
+ 
+\section{Conclusions}\label{Conc}
+This project successfully demonstrated the integration of audio acquisition, speech-to-text processing, cloud APIs, and web-based visualization to create a fully functional voice-controlled Spotify system. By leveraging the Raspberry Pi, I2S microphone, Whisper STT, MQTT messaging, and Node-RED Dashboard, we built an open-source alternative to commercial smart speakers. The system reliably transcribed voice commands, searched Spotify, initiated playback, and displayed real-time song metadata. This hands-on experience reinforced key concepts in embedded systems, digital audio processing, API integration, and IoT communication protocols. Future enhancements could include wake-word detection, additional voice controls, and multi-room audio capabilities.
+
+\section*{Acknowledgments}
+This work was supported by Ralph W. and Grace M. Showalter Research Trust (No. 41001449), Clifford B. Kinley Trust, and Health of the Forces by Purdue University.
+
+\section*{AUTHOR DECLARATIONS}
+\subsection*{Conflict of Interest}
+The authors declare no conflicts of interest. All co-authors have reviewed and approved the contents of the manuscript, and there are no financial interests to disclose. We confirm that this submission is original work and is not currently under review by any other publication.
+
+\section*{DATA AVAILABILITY}
+Data are available upon reasonable request. Interested researchers can contact the corresponding author at 
+
+\bibliography{sampbib}
+
+\end{document}

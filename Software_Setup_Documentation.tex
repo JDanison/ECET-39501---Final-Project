@@ -1,0 +1,651 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+
+% Code listing style
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10},
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    showstringspaces=false
+}
+
+% Section formatting
+\titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+
+\title{Software Setup -- Chronological Order\\
+\large ECET 35901 Final Project: Spotify Voice Control System}
+\author{John Danison}
+\date{Fall 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Project Overview}
+This project implements a voice-controlled Spotify music player on a Raspberry Pi, featuring ADC volume control and MQTT integration with Node-RED for Spotify API communication.
+
+\section{System Architecture \& Code Flow}
+
+\subsection{Step-by-Step Logic}
+
+\subsubsection{Phase 1: System Initialization}
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Virtual Environment Activation}
+    \begin{itemize}
+        \item Script automatically detects and activates Python virtual environment (\texttt{venv/})
+        \item Checks if already running in venv to avoid redundant activation
+        \item Displays warning if venv not found
+    \end{itemize}
+    
+    \item \textbf{Import Dependencies}
+    \begin{itemize}
+        \item Load Whisper.cpp for speech-to-text transcription
+        \item Import gpiozero for MCP3008 ADC interface
+        \item Load paho-mqtt for MQTT communication
+        \item Handle graceful degradation if components unavailable
+    \end{itemize}
+    
+    \item \textbf{Hardware Initialization}
+    \begin{itemize}
+        \item Initialize MCP3008 ADC on channel 0 (potentiometer input)
+        \item Test ADC availability and set flag accordingly
+        \item Configure audio device paths: \texttt{plughw:4,0} (I2S mic), \texttt{plughw:3,0} (USB speakers)
+    \end{itemize}
+    
+    \item \textbf{Start Spotifyd Daemon}
+    \begin{itemize}
+        \item Check if spotifyd process already running using \texttt{pgrep}
+        \item If not running, launch spotifyd with \texttt{--no-daemon} flag
+        \item Wait 2 seconds for daemon initialization
+    \end{itemize}
+    
+    \item \textbf{Launch MQTT Control Listener}
+    \begin{itemize}
+        \item Create MQTT client with callback functions
+        \item Connect to broker at \texttt{localhost:1883}
+        \item Subscribe to \texttt{voice/control} topic for button commands
+        \item Run listener in background thread (daemon mode)
+    \end{itemize}
+    
+    \item \textbf{Start Volume Monitoring Thread}
+    \begin{itemize}
+        \item If ADC available, set \texttt{volume\_monitoring = True}
+        \item Launch background thread executing \texttt{volume\_monitor\_thread()}
+        \item Thread reads ADC every 0.2 seconds and adjusts system volume
+    \end{itemize}
+    
+    \item \textbf{Display User Interface}
+    \begin{itemize}
+        \item Print available commands (R/P/T/V/Q)
+        \item Show MQTT topic information
+        \item Enter main input loop
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Phase 2: Main Operation Loop}
+
+\paragraph{Option R -- Record Voice Command}
+\begin{enumerate}[leftmargin=*]
+    \item User presses 'R' or MQTT receives \texttt{button\_pressed} while not recording
+    \item Script displays: ``Recording... speak now!''
+    \item Publish status to \texttt{voice/status}: ``Recording''
+    \item Execute \texttt{arecord} command:
+    \begin{lstlisting}[language=bash]
+arecord -D plughw:4,0 -c1 -r 48000 -f S32_LE songrequest.wav
+    \end{lstlisting}
+    \item User speaks: ``Play [Song Name] by [Artist Name]''
+    \item User presses CTRL+C or sends MQTT stop command
+    \item Audio saved as \texttt{songrequest.wav}
+    \item Proceed to transcription phase
+\end{enumerate}
+
+\paragraph{Option T -- Transcribe \& Process}
+\begin{enumerate}[leftmargin=*]
+    \item User presses 'T' or auto-triggered after recording stop
+    \item Check if \texttt{songrequest.wav} exists, display error if not
+    \item Publish status to \texttt{voice/status}: ``Processing Request''
+    \item Execute Whisper.cpp transcription:
+    \begin{lstlisting}[language=bash]
+./whisper.cpp/build/bin/whisper-cli \
+    -m ./whisper.cpp/models/ggml-tiny.en.bin \
+    -f songrequest.wav -nt
+    \end{lstlisting}
+    \item Capture stdout text result (e.g., ``play, Stairway to Heaven by Led Zeppelin'')
+    \item Call \texttt{parse\_voice\_command()} to format:
+    \begin{itemize}
+        \item Remove ``play,'' or ``play'' prefix
+        \item Split on `` by '' separator
+        \item Extract song name and artist name
+        \item Capitalize each word
+        \item Combine: ``Stairway To Heaven Led Zeppelin''
+    \end{itemize}
+    \item Call \texttt{send\_to\_nodered()}:
+    \begin{itemize}
+        \item Create MQTT client
+        \item Connect to \texttt{localhost:1883}
+        \item Publish formatted query to \texttt{voice/spotify} topic
+        \item Disconnect client
+    \end{itemize}
+    \item Clear status: publish empty string to \texttt{voice/status}
+    \item Display success message with formatted query
+\end{enumerate}
+
+\paragraph{Option P -- Playback Last Recording}
+\begin{enumerate}[leftmargin=*]
+    \item User presses 'P'
+    \item Execute \texttt{aplay} command:
+    \begin{lstlisting}[language=bash]
+aplay -D plughw:3,0 songrequest.wav
+    \end{lstlisting}
+    \item Audio plays through USB speakers
+    \item Return to main menu
+\end{enumerate}
+
+\paragraph{Option V -- Toggle Volume Monitoring}
+\begin{enumerate}[leftmargin=*]
+    \item User presses 'V'
+    \item Check if ADC available, display error if not
+    \item If volume monitoring OFF:
+    \begin{itemize}
+        \item Set \texttt{volume\_monitoring = True}
+        \item Launch new background thread running \texttt{volume\_monitor\_thread()}
+        \item Display: ``Volume monitoring: ON''
+    \end{itemize}
+    \item If volume monitoring ON:
+    \begin{itemize}
+        \item Set \texttt{volume\_monitoring = False}
+        \item Wait for thread to terminate (1 second timeout)
+        \item Display: ``Volume monitoring: OFF''
+    \end{itemize}
+\end{enumerate}
+
+\paragraph{Option Q -- Quit Application}
+\begin{enumerate}[leftmargin=*]
+    \item User presses 'Q'
+    \item Clear dashboard displays:
+    \begin{itemize}
+        \item Publish empty string to \texttt{voice/status}
+        \item Publish empty string to \texttt{voice/spotify}
+    \end{itemize}
+    \item Stop volume monitoring thread if running
+    \item Kill spotifyd process: \texttt{pkill spotifyd}
+    \item Display goodbye message and exit program
+\end{enumerate}
+
+\subsubsection{Phase 3: Background Processes (Parallel Execution)}
+
+\paragraph{Background Thread 1: MQTT Control Listener}
+\begin{enumerate}[leftmargin=*]
+    \item Runs continuously in daemon thread
+    \item Listens on \texttt{voice/control} topic
+    \item On message received:
+    \begin{itemize}
+        \item Decode payload (e.g., ``button\_pressed'')
+        \item If currently recording: stop and transcribe
+        \item If not recording: start recording
+    \end{itemize}
+    \item Also accepts text commands: ``record'', ``stop'', ``transcribe''
+    \item Boolean values: ``true'' = start, ``false'' = stop
+\end{enumerate}
+
+\paragraph{Background Thread 2: Volume Monitoring}
+\begin{enumerate}[leftmargin=*]
+    \item Runs continuously while \texttt{volume\_monitoring == True}
+    \item Loop every 0.2 seconds:
+    \begin{itemize}
+        \item Read MCP3008 ADC value (0.0 to 1.0 float)
+        \item Calculate display volume: \texttt{int(adc\_value * 100)}
+        \item Map to system volume: \texttt{int(adc\_value * 91) + 9} (range: 9-100\%)
+        \item Execute: \texttt{amixer set Master [volume]\%}
+    \end{itemize}
+    \item Prevents audio cutout by avoiding 0-8\% range
+    \item Terminates when flag set to False
+\end{enumerate}
+
+\paragraph{External Process: Node-RED Flow}
+\begin{enumerate}[leftmargin=*]
+    \item Runs independently on Raspberry Pi
+    \item Subscribes to \texttt{voice/spotify} MQTT topic
+    \item On message received (e.g., ``Stairway To Heaven Led Zeppelin''):
+    \begin{itemize}
+        \item Parse search query
+        \item Send HTTP request to Spotify Web API
+        \item Search for matching track
+        \item Extract track URI
+        \item Send play command to spotifyd via Spotify Connect API
+    \end{itemize}
+    \item Handles authentication tokens and API rate limiting
+    \item Publishes playback status back to dashboard
+\end{enumerate}
+
+\section{Programming Languages \& Tools Used}
+
+\subsection{Primary Language}
+\begin{itemize}
+    \item \textbf{Python 3} (version 3.9+)
+\end{itemize}
+
+\subsection{Key Libraries \& Packages}
+
+\subsubsection{Audio Processing}
+\begin{itemize}
+    \item \textbf{whispercpp} -- OpenAI Whisper speech-to-text engine (Python bindings)
+    \item \textbf{arecord} -- ALSA audio recording tool (I2S microphone interface)
+    \item \textbf{aplay} -- ALSA audio playback tool (USB speaker output)
+\end{itemize}
+
+\subsubsection{Hardware Control}
+\begin{itemize}
+    \item \textbf{gpiozero} -- MCP3008 ADC interface for volume potentiometer
+    \begin{itemize}
+        \item Reads analog voltage (0--3.3V) from potentiometer
+        \item Converts to digital volume control (0--100\%)
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{MQTT Communication}
+\begin{itemize}
+    \item \textbf{paho-mqtt} -- MQTT client library
+    \begin{itemize}
+        \item Publishes voice commands to Node-RED
+        \item Subscribes to control commands from dashboard
+        \item Sends status updates (recording, processing, errors)
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{System Utilities}
+\begin{itemize}
+    \item \textbf{subprocess} -- Execute shell commands (arecord, aplay, amixer)
+    \item \textbf{threading} -- Parallel execution for volume monitoring \& MQTT listener
+    \item \textbf{os, sys} -- Virtual environment activation and file path management
+\end{itemize}
+
+\subsection{External Tools}
+
+\subsubsection{Node-RED}
+\begin{itemize}
+    \item \textbf{Purpose:} Spotify API integration
+    \item \textbf{Function:} Receives MQTT messages, searches Spotify catalog, plays songs
+    \item \textbf{Flow Files:}
+    \begin{itemize}
+        \item \texttt{Node-Red Spotify Flow vFinal.json}
+        \item \texttt{Spotify Test 2 Updated 2.json}
+    \end{itemize}
+    \item \textbf{Topics:}
+    \begin{itemize}
+        \item \texttt{voice/spotify} (search queries)
+        \item \texttt{voice/control} (button commands)
+        \item \texttt{voice/status} (system status)
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Spotifyd}
+\begin{itemize}
+    \item \textbf{Purpose:} Spotify Connect daemon
+    \item \textbf{Function:} Allows Raspberry Pi to appear as Spotify playback device
+    \item \textbf{Auto-start:} Launched by Python script if not running
+\end{itemize}
+
+\subsubsection{MQTT Broker (Mosquitto)}
+\begin{itemize}
+    \item \textbf{Port:} 1883 (local)
+    \item \textbf{Function:} Message broker between Python script and Node-RED
+\end{itemize}
+
+\section{Installation \& Configuration}
+
+\subsection{Prerequisites}
+\begin{lstlisting}[language=bash]
+# 1. Update system
+sudo apt update && sudo apt upgrade -y
+
+# 2. Install ALSA audio tools
+sudo apt install alsa-utils -y
+
+# 3. Install MQTT broker
+sudo apt install mosquitto mosquitto-clients -y
+
+# 4. Install Python dependencies
+pip3 install gpiozero paho-mqtt
+
+# 5. Configure I2S microphone (add to /boot/firmware/config.txt)
+sudo nano /boot/firmware/config.txt
+# Add line: dtoverlay=googlevoicehat-soundcard
+sudo reboot now
+\end{lstlisting}
+
+\subsection{Virtual Environment Setup}
+\begin{lstlisting}[language=bash]
+cd ~/Documents/Final Project
+python3 -m venv venv
+source venv/bin/activate
+pip install whispercpp gpiozero paho-mqtt
+\end{lstlisting}
+
+\subsection{Whisper.cpp Installation}
+\begin{lstlisting}[language=bash]
+cd ~/Documents/Final Project
+git clone https://github.com/ggerganov/whisper.cpp.git
+cd whisper.cpp
+make
+# Download tiny.en model
+bash ./models/download-ggml-model.sh tiny.en
+\end{lstlisting}
+
+\subsection{Spotifyd Configuration}
+\begin{itemize}
+    \item Placed in project root directory
+    \item Runs as foreground process (\texttt{--no-daemon} flag)
+    \item Configured via \texttt{\textasciitilde/.config/spotifyd/spotifyd.conf}
+\end{itemize}
+
+\section{Hardware Configuration}
+
+\subsection{Audio Devices}
+\begin{itemize}
+    \item \textbf{I2S Microphone:} \texttt{plughw:4,0} (Adafruit I2S MEMS Microphone)
+    \begin{itemize}
+        \item Format: S32\_LE (32-bit signed little-endian)
+        \item Sample Rate: 48000 Hz
+        \item Channels: 1 (mono)
+    \end{itemize}
+    
+    \item \textbf{USB Speakers:} \texttt{plughw:3,0} (USB Audio Device)
+    \begin{itemize}
+        \item Playback device for recorded audio \& Spotify
+    \end{itemize}
+\end{itemize}
+
+\subsection{ADC Configuration}
+\begin{itemize}
+    \item \textbf{Chip:} MCP3008 (8-channel 10-bit ADC)
+    \item \textbf{Channel:} 0 (potentiometer input)
+    \item \textbf{Update Rate:} 200ms (0.2 seconds)
+    \item \textbf{Volume Mapping:}
+    \begin{itemize}
+        \item ADC: 0.0--1.0 $\rightarrow$ Display: 0--100\%
+        \item System Volume: 9--100\% (prevents audio cutout at low end)
+    \end{itemize}
+\end{itemize}
+
+\section{Code Structure \& Key Functions}
+
+\subsection{Main File: SpotifyVoiceControl.py (524 lines)}
+
+\subsubsection{Voice Command Processing}
+\begin{lstlisting}[language=Python]
+parse_voice_command(transcript)
+# Input: "Play, Stairway to Heaven by Led Zeppelin"
+# Output: "Stairway To Heaven Led Zeppelin"
+# Logic:
+#   - Remove "Play," or "play" prefix
+#   - Remove " by " separator
+#   - Capitalize each word
+#   - Combine song + artist
+\end{lstlisting}
+
+\subsubsection{MQTT Functions}
+\begin{itemize}
+    \item \texttt{send\_to\_nodered()} -- Publish formatted search query
+    \item \texttt{send\_status\_update()} -- Update dashboard status display
+    \item \texttt{on\_mqtt\_message()} -- Handle button press commands
+    \item \texttt{start\_mqtt\_listener()} -- Background thread for control topic
+\end{itemize}
+
+\subsubsection{Recording Functions}
+\begin{itemize}
+    \item \texttt{start\_recording()} -- Spawn arecord process (background)
+    \item \texttt{stop\_recording\_and\_transcribe()} -- Terminate recording, run transcription
+    \item \texttt{transcribe\_audio()} -- Execute whisper-cli, parse output, send to Node-RED
+\end{itemize}
+
+\subsubsection{Volume Control}
+\begin{itemize}
+    \item \texttt{set\_volume(volume\_percent)} -- Execute amixer command
+    \item \texttt{volume\_monitor\_thread()} -- Continuous ADC polling loop
+\end{itemize}
+
+\section{Terminal Command Examples}
+
+\subsection{Recording Audio}
+\begin{lstlisting}[language=bash]
+arecord -D plughw:4,0 -c1 -r 48000 -f S32_LE songrequest.wav
+# Output: Recording... (Press CTRL+C to stop)
+\end{lstlisting}
+
+\subsection{Playing Audio}
+\begin{lstlisting}[language=bash]
+aplay -D plughw:3,0 songrequest.wav
+# Output: Playing WAVE 'songrequest.wav' : Signed 32 bit 
+#         Little Endian, Rate 48000 Hz, Mono
+\end{lstlisting}
+
+\subsection{Transcription (Whisper)}
+\begin{lstlisting}[language=bash]
+./whisper.cpp/build/bin/whisper-cli \
+    -m ./whisper.cpp/models/ggml-tiny.en.bin \
+    -f songrequest.wav -nt
+# Output: play, Stairway to Heaven by Led Zeppelin
+\end{lstlisting}
+
+\subsection{Volume Control}
+\begin{lstlisting}[language=bash]
+amixer set Master 75%
+# Output: Simple mixer control 'Master',0
+#         Mono: Playback 75 [75%] [-7.50dB] [on]
+\end{lstlisting}
+
+\subsection{MQTT Testing}
+\begin{lstlisting}[language=bash]
+# Publish test command
+mosquitto_pub -h localhost -t voice/control -m "button_pressed"
+
+# Subscribe to status updates
+mosquitto_sub -h localhost -t voice/status
+# Output: Recording
+#         Processing Request
+\end{lstlisting}
+
+\subsection{Check System Status}
+\begin{lstlisting}[language=bash]
+# Verify MQTT broker
+sudo systemctl status mosquitto
+
+# Confirm spotifyd running
+pgrep -x spotifyd
+
+# List audio devices
+arecord -l
+\end{lstlisting}
+
+\section{Running the Application}
+
+\subsection{Location}
+\begin{center}
+\texttt{\textasciitilde/Documents/Final Project/SpotifyVoiceControl.py}
+\end{center}
+
+\subsection{Execute Command}
+\begin{lstlisting}[language=bash]
+cd ~/Documents/Final Project
+python3 SpotifyVoiceControl.py
+\end{lstlisting}
+
+\subsection{Expected Startup Output}
+\begin{lstlisting}
+==================================================
+ECET 35901 - Final Project
+Spotify Voice Control System
+==================================================
+
+Initializing system...
+
+Activating virtual environment...
+* spotifyd already running
+Starting MQTT control listener...
+* MQTT control listener connected
+  Listening on: voice/control
+
+Starting volume control...
+Volume monitoring started (running in background).
+
+System ready!
+
+Commands:
+  R = Record voice command
+  P = Play last recording
+  T = Transcribe & send to Spotify
+  V = Toggle volume monitoring (currently ON)
+  Q = Quit
+
+MQTT Control:
+  Topic: voice/control
+  Commands: 'button_pressed' (toggle record/stop)
+
+MQTT Status:
+  Topic: voice/status
+  Messages: recording, Processing Request, error
+
+Enter command (R/P/T/V/Q): 
+\end{lstlisting}
+
+\section{User Interaction Examples}
+
+\subsection{Manual Recording}
+\begin{lstlisting}
+Enter command (R/P/T/V/Q): r
+
+Recording... speak now!
+Say: 'Play [Song Name] by [Artist Name]'
+Press CTRL+C to stop.
+
+^C
+Recording manually stopped.
+Saved as songrequest.wav
+
+Enter command (R/P/T/V/Q): t
+
+Transcribing audio... please wait.
+
+=== TRANSCRIPTION RESULT ===
+play, Stairway to Heaven by Led Zeppelin
+============================
+
+Sending to Node-RED...
+  Original: 'play, Stairway to Heaven by Led Zeppelin'
+  Formatted: 'Stairway To Heaven Led Zeppelin'
+  Connecting to localhost:1883...
+  Publishing to topic: voice/spotify
+* Sent to Node-RED: 'Stairway To Heaven Led Zeppelin'
+\end{lstlisting}
+
+\subsection{MQTT Button Control}
+\begin{lstlisting}
+Received command: 'button_pressed'
+
+Recording started... (waiting for stop command)
+
+Received command: 'button_pressed'
+Stopping recording...
+* Saved as songrequest.wav
+
+Transcribing audio... please wait.
+[... transcription process ...]
+* Sent to Node-RED: 'Bohemian Rhapsody Queen'
+\end{lstlisting}
+
+\subsection{Volume Control (Background)}
+Volume control runs continuously in the background. The ADC continuously reads the potentiometer and automatically adjusts system volume. No terminal output is displayed unless an error occurs.
+
+\section{File Structure}
+\begin{verbatim}
+Final Project/
+|
+|-- SpotifyVoiceControl.py          # Main application (524 lines)
+|-- HardwareFuncations.py           # Alternative/test version (289 lines)
+|-- songrequest.wav                 # Recorded audio buffer
+|
+|-- venv/                           # Python virtual environment
+|   +-- bin/activate_this.py        # Auto-activation script
+|
+|-- whisper.cpp/                    # Whisper.cpp repository
+|   |-- build/bin/whisper-cli       # Transcription executable
+|   +-- models/ggml-tiny.en.bin     # Tiny English model
+|
+|-- spotifyd                        # Spotify Connect daemon binary
+|
+|-- Node-Red Spotify Flow vFinal.json   # Node-RED flow export
+|-- Spotify Test 2 Updated 2.json       # Alternative flow version
+|
+|-- Commands.txt                    # Setup commands reference
++-- README.md                       # Project description
+\end{verbatim}
+
+\section{Troubleshooting Tips}
+
+\subsection{Issue: ``Whisper not available''}
+\textbf{Solution:} Verify virtual environment is activated and whispercpp is installed
+\begin{lstlisting}[language=bash]
+source venv/bin/activate
+pip install whispercpp
+\end{lstlisting}
+
+\subsection{Issue: ``Connection refused - MQTT broker''}
+\textbf{Solution:} Start Mosquitto broker
+\begin{lstlisting}[language=bash]
+sudo systemctl start mosquitto
+sudo systemctl enable mosquitto
+\end{lstlisting}
+
+\subsection{Issue: ``No audio devices found''}
+\textbf{Solution:} Check I2S microphone configuration
+\begin{lstlisting}[language=bash]
+arecord -l  # Should show plughw:4,0
+sudo nano /boot/firmware/config.txt
+# Verify: dtoverlay=googlevoicehat-soundcard
+\end{lstlisting}
+
+\subsection{Issue: ``ADC not available''}
+\textbf{Solution:} Check SPI interface enabled
+\begin{lstlisting}[language=bash]
+sudo raspi-config
+# Interface Options -> SPI -> Enable
+\end{lstlisting}
+
+\subsection{Issue: Spotifyd not connecting to Spotify}
+\textbf{Solution:} Verify credentials in config file
+\begin{lstlisting}[language=bash]
+nano ~/.config/spotifyd/spotifyd.conf
+# Check username, password, device_name
+\end{lstlisting}
+
+\section{System Requirements}
+\begin{itemize}
+    \item \textbf{Platform:} Raspberry Pi 4 Model B (tested)
+    \item \textbf{OS:} Raspberry Pi OS (Debian-based, 64-bit recommended)
+    \item \textbf{Python:} 3.9 or higher
+    \item \textbf{Network:} WiFi or Ethernet (for Spotify API access)
+    \item \textbf{Storage:} $\sim$500MB for Whisper model + dependencies
+    \item \textbf{RAM:} 2GB minimum (4GB recommended for Whisper processing)
+\end{itemize}
+
+\section{Credits \& References}
+\begin{itemize}
+    \item \textbf{Whisper.cpp:} \url{https://github.com/ggerganov/whisper.cpp}
+    \item \textbf{I2S Microphone Setup:} \url{https://learn.adafruit.com/adafruit-i2s-mems-microphone-breakout/raspberry-pi-wiring-test}
+    \item \textbf{Spotifyd:} \url{https://github.com/Spotifyd/spotifyd}
+    \item \textbf{Paho MQTT Python:} \url{https://pypi.org/project/paho-mqtt/}
+\end{itemize}
+
+\end{document}
